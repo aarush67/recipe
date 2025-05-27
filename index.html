@@ -6,29 +6,52 @@
   <title>AI Recipe Generator</title>
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/Babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.2/Babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes gradientShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    body {
+      background: linear-gradient(270deg, #6B46C1, #EC4899, #3B82F6);
+      background-size: 600% 600%;
+      animation: gradientShift 15s ease infinite;
+    }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
 </head>
-<body class="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 min-h-screen flex items-center justify-center p-4">
+<body class="min-h-screen flex items-center justify-center p-6">
   <div id="root"></div>
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Error Boundary Component
+    // Error Boundary
     class ErrorBoundary extends React.Component {
-      state = { hasError: false };
+      state = { hasError: false, error: null };
       static getDerivedStateFromError(error) {
-        return { hasError: true };
+        return { hasError: true, error };
       }
       render() {
         if (this.state.hasError) {
-          return <h1 className="text-white text-center">Something went wrong. Please refresh.</h1>;
+          console.error('Render Error:', this.state.error);
+          return (
+            <div className="text-center text-white">
+              <h1 className="text-2xl font-bold">Something went wrong</h1>
+              <p>Please refresh the page or check the console for details.</p>
+            </div>
+          );
         }
         return this.props.children;
       }
     }
 
-    // Cookie helper functions
+    // Cookie helpers
     const setCookie = (name, value, days) => {
       try {
         const expires = new Date();
@@ -61,7 +84,6 @@
       const [recipeHistory, setRecipeHistory] = useState([]);
       const [generationsLeft, setGenerationsLeft] = useState(3);
 
-      // Load cookies and check generation limit
       useEffect(() => {
         try {
           const savedRecipes = getCookie('recipes') || [];
@@ -69,7 +91,6 @@
 
           const limitData = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
           const today = new Date().toDateString();
-
           if (limitData.date !== today) {
             setCookie('generationLimit', { count: 0, date: today }, 1);
             setGenerationsLeft(3);
@@ -77,7 +98,7 @@
             setGenerationsLeft(3 - limitData.count);
           }
         } catch (err) {
-          setError('Error loading cookies. Please try again.');
+          setError('Error loading saved recipes.');
           console.error(err);
         }
       }, []);
@@ -87,7 +108,6 @@
           setError('Daily limit reached! Try again tomorrow.');
           return;
         }
-
         if (!ingredients.trim()) {
           setError('Please enter at least one ingredient.');
           return;
@@ -106,11 +126,11 @@
             body: JSON.stringify({ prompt }),
           });
 
-          if (!response.ok) throw new Error('Failed to fetch recipe');
+          if (!response.ok) throw new Error(`API error: ${response.statusText}`);
           const data = await response.json();
           let newRecipe;
           try {
-            newRecipe = JSON.parse(data.recipe); // Expect Gemini to return JSON string
+            newRecipe = JSON.parse(data.recipe);
           } catch (err) {
             throw new Error('Invalid recipe format from API');
           }
@@ -125,7 +145,7 @@
           setCookie('generationLimit', { count: newCount, date: new Date().toDateString() }, 1);
           setGenerationsLeft(3 - newCount);
         } catch (err) {
-          setError('Error generating recipe. Please try again.');
+          setError('Failed to generate recipe. Please try again.');
           console.error('API Error:', err);
         } finally {
           setLoading(false);
@@ -134,27 +154,27 @@
 
       return (
         <ErrorBoundary>
-          <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
-            <h1 className="text-4xl font-bold text-center text-gray-800 mb-6">AI Recipe Generator</h1>
-            <p className="text-center text-gray-600 mb-4">Generations left today: {generationsLeft}</p>
+          <div className="max-w-4xl w-full mx-auto glass-card rounded-2xl shadow-xl p-8">
+            <h1 className="text-4xl font-extrabold text-center text-white mb-6 drop-shadow">AI Recipe Generator</h1>
+            <p className="text-center text-white opacity-80 mb-6">Generations left today: {generationsLeft}</p>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ingredients (comma-separated)</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div className="glass-card p-4 rounded-lg">
+                <label className="block text-sm font-medium text-white mb-2">Ingredients</label>
                 <input
                   type="text"
                   value={ingredients}
                   onChange={(e) => setIngredients(e.target.value)}
                   placeholder="e.g., chicken, rice, broccoli"
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-white/50"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Dietary Preference</label>
+              <div className="glass-card p-4 rounded-lg">
+                <label className="block text-sm font-medium text-white mb-2">Dietary Preference</label>
                 <select
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                 >
                   <option value="none">No Preference</option>
                   <option value="vegan">Vegan</option>
@@ -163,12 +183,12 @@
                   <option value="keto">Keto</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Cuisine Type</label>
+              <div className="glass-card p-4 rounded-lg">
+                <label className="block text-sm font-medium text-white mb-2">Cuisine Type</label>
                 <select
                   value={cuisine}
                   onChange={(e) => setCuisine(e.target.value)}
-                  className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
                 >
                   <option value="none">Any Cuisine</option>
                   <option value="Italian">Italian</option>
@@ -182,36 +202,48 @@
             <button
               onClick={handleGenerateRecipe}
               disabled={loading || !ingredients.trim() || generationsLeft <= 0}
-              className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:bg-gray-400 transition"
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all duration-300"
             >
-              {loading ? 'Generating...' : 'Generate Recipe'}
+              {loading ? (
+                <span className="flex items-center justify-center">
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8h8a8 8 0 01-8 8 8 8 0 01-8-8z" />
+                  </svg>
+                  Generating...
+                </span>
+              ) : (
+                'Generate Recipe'
+              )}
             </button>
 
-            {error && <p className="text-red-500 text-center mt-4">{error}</p>}
+            {error && (
+              <p className="text-red-300 text-center mt-4 bg-red-500/20 rounded-lg p-3">{error}</p>
+            )}
 
             {recipe && (
-              <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">{recipe.name || 'Your Recipe'}</h2>
+              <div className="mt-8 p-6 glass-card rounded-lg">
+                <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow">{recipe.name || 'Your Recipe'}</h2>
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-700">Ingredients</h3>
-                  <ul className="list-disc pl-5">
+                  <h3 className="text-lg font-medium text-white">Ingredients</h3>
+                  <ul className="list-disc pl-5 text-white/80">
                     {(recipe.ingredients || []).map((item, index) => (
-                      <li key={index} className="text-gray-600">{item}</li>
+                      <li key={index}>{item}</li>
                     ))}
                   </ul>
                 </div>
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-gray-700">Instructions</h3>
-                  <ol className="list-decimal pl-5">
+                  <h3 className="text-lg font-medium text-white">Instructions</h3>
+                  <ol className="list-decimal pl-5 text-white/80">
                     {(recipe.instructions || []).map((step, index) => (
-                      <li key={index} className="text-gray-600">{step}</li>
+                      <li key={index}>{step}</li>
                     ))}
-                  </ul>
+                  </ol>
                 </div>
                 {recipe.nutritionalInfo && (
                   <div>
-                    <h3 className="text-lg font-medium text-gray-700">Nutritional Info</h3>
-                    <p className="text-gray-600">{recipe.nutritionalInfo}</p>
+                    <h3 className="text-lg font-medium text-white">Nutritional Info</h3>
+                    <p className="text-white/80">{recipe.nutritionalInfo}</p>
                   </div>
                 )}
               </div>
@@ -219,12 +251,12 @@
 
             {recipeHistory.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Recipe History</h2>
+                <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow">Recipe History</h2>
                 <div className="grid gap-4">
                   {recipeHistory.map((savedRecipe, index) => (
-                    <div key={index} className="p-4 bg-gray-100 rounded-lg">
-                      <h3 className="text-lg font-medium text-gray-700">{savedRecipe.name}</h3>
-                      <p className="text-gray-600">Ingredients: {savedRecipe.ingredients.join(', ')}</p>
+                    <div key={index} className="p-4 glass-card rounded-lg hover:shadow-lg transition-shadow">
+                      <h3 className="text-lg font-medium text-white">{savedRecipe.name}</h3>
+                      <p className="text-white/80">Ingredients: {savedRecipe.ingredients.join(', ')}</p>
                     </div>
                   ))}
                 </div>
@@ -236,10 +268,16 @@
     };
 
     try {
-      ReactDOM.render(<App />, document.getElementById('root'));
+      const root = document.getElementById('root');
+      ReactDOM.render(<App />, root);
     } catch (err) {
       console.error('Render Error:', err);
-      document.getElementById('root').innerHTML = '<h1 className="text-white text-center">Failed to load app. Please check console.</h1>';
+      document.getElementById('root').innerHTML = `
+        <div class="text-center text-white">
+          <h1 class="text-2xl font-bold">Failed to load app</h1>
+          <p>Please check the console (F12) for details or refresh the page.</p>
+        </div>
+      `;
     }
   </script>
 </body>
