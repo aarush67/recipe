@@ -85,6 +85,16 @@
       }
     };
 
+    // Normalize ingredient format
+    const normalizeIngredient = (ingredient) => {
+      if (typeof ingredient === 'string') return ingredient;
+      if (ingredient && typeof ingredient === 'object' && 'item' in ingredient) {
+        return ingredient.amount ? `${ingredient.item} (${ingredient.amount})` : ingredient.item;
+      }
+      console.warn('Invalid ingredient format:', ingredient);
+      return 'Unknown ingredient';
+    };
+
     const App = () => {
       const [ingredients, setIngredients] = useState('');
       const [dietary, setDietary] = useState('none');
@@ -128,7 +138,7 @@
         setError(null);
         setRecipe(null);
 
-        const prompt = `Generate a detailed recipe in JSON format with fields: name, ingredients (array), instructions (array), nutritionalInfo (string). Use these ingredients: ${ingredients}. Dietary preference: ${dietary === 'none' ? 'No restrictions' : dietary}. Cuisine type: ${cuisine === 'none' ? 'Any' : cuisine}. Return only the JSON object, without markdown or code block formatting.`;
+        const prompt = `Generate a detailed recipe in JSON format with fields: name (string), ingredients (array of strings, each combining item and amount, e.g., "Chicken (200g)"), instructions (array of strings), nutritionalInfo (string). Use these ingredients: ${ingredients}. Dietary preference: ${dietary === 'none' ? 'No restrictions' : dietary}. Cuisine type: ${cuisine === 'none' ? 'Any' : cuisine}. Return only the JSON object, without markdown or code block formatting.`;
 
         try {
           const response = await fetch('/api/gemini', {
@@ -148,6 +158,8 @@
             if (!newRecipe.name || !Array.isArray(newRecipe.ingredients) || !Array.isArray(newRecipe.instructions)) {
               throw new Error('Incomplete recipe data');
             }
+            // Normalize ingredients to strings
+            newRecipe.ingredients = newRecipe.ingredients.map(normalizeIngredient);
           } catch (err) {
             console.error('Raw API response:', data.recipe);
             throw new Error('Invalid recipe format from API: ' + err.message);
@@ -246,7 +258,7 @@
                   <h3 className="text-lg font-medium text-gray-700">Ingredients</h3>
                   <ul className="list-disc pl-5 text-gray-600">
                     {(recipe.ingredients || []).map((item, index) => (
-                      <li key={index}>{item}</li>
+                      <li key={index}>{normalizeIngredient(item)}</li>
                     ))}
                   </ul>
                 </div>
@@ -274,7 +286,9 @@
                   {recipeHistory.map((savedRecipe, index) => (
                     <div key={index} className="p-4 recipe-card rounded-lg hover:shadow-md transition-shadow">
                       <h3 className="text-lg font-medium text-gray-700">{savedRecipe.name}</h3>
-                      <p className="text-gray-600">Ingredients: {savedRecipe.ingredients.join(', ')}</p>
+                      <p className="text-gray-600">
+                        Ingredients: {(savedRecipe.ingredients || []).map(normalizeIngredient).join(', ')}
+                      </p>
                     </div>
                   ))}
                 </div>
