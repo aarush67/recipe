@@ -7,7 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.css">
   <style>
     @keyframes gradientShift {
       0% { background-position: 0% 50%; }
@@ -28,7 +28,7 @@
 <body class="min-h-screen flex items-center justify-center p-6">
   <div id="root"></div>
   <script type="text/javascript">
-    // Fallback if React fails to load
+    // Fallback if scripts fail to load
     if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof Babel === 'undefined') {
       console.error('Failed to load React, ReactDOM, or Babel from CDN');
       document.getElementById('root').innerHTML = `
@@ -137,13 +137,16 @@
             body: JSON.stringify({ prompt }),
           });
 
-          if (!response.ok) throw new Error(`API error: ${response.statusText}`);
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error: ${response.statusText} - ${errorText}`);
+          }
           const data = await response.json();
           let newRecipe;
           try {
             newRecipe = JSON.parse(data.recipe);
           } catch (err) {
-            throw new Error('Invalid recipe format from API');
+            throw new Error('Invalid recipe format from API: ' + err.message);
           }
 
           const updatedHistory = [newRecipe, ...recipeHistory].slice(0, 10);
@@ -156,7 +159,7 @@
           setCookie('generationLimit', { count: newCount, date: new Date().toDateString() }, 1);
           setGenerationsLeft(3 - newCount);
         } catch (err) {
-          setError('Failed to generate recipe. Please try again.');
+          setError(`Failed to generate recipe: ${err.message}. Please check your API key or try again.`);
           console.error('API Error:', err);
         } finally {
           setLoading(false);
