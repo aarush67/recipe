@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + process.env.GEMINI_API_KEY, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -43,8 +43,18 @@ export default async function handler(req, res) {
       throw new Error('Invalid response format from Gemini API');
     }
 
-    const recipe = data.candidates[0].content.parts[0].text;
-    res.status(200).json({ recipe });
+    let recipeText = data.candidates[0].content.parts[0].text;
+    // Strip markdown code block and language identifier
+    recipeText = recipeText.replace(/^```json\n|\n```$/g, '').trim();
+    // Validate JSON
+    try {
+      JSON.parse(recipeText);
+    } catch (err) {
+      console.error('Invalid JSON from Gemini API:', recipeText);
+      throw new Error('Invalid JSON format: ' + err.message);
+    }
+
+    res.status(200).json({ recipe: recipeText });
   } catch (err) {
     console.error('Gemini API Error:', err.message, err.stack);
     res.status(500).json({ error: `Failed to generate recipe: ${err.message}` });
