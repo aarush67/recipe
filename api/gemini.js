@@ -46,15 +46,31 @@ export default async function handler(req, res) {
     let recipeText = data.candidates[0].content.parts[0].text;
     // Strip markdown code block and language identifier
     recipeText = recipeText.replace(/^```json\n|\n```$/g, '').trim();
-    // Validate JSON
+    
+    // Parse and normalize recipe
+    let recipe;
     try {
-      JSON.parse(recipeText);
+      recipe = JSON.parse(recipeText);
+      // Normalize ingredients to strings
+      if (Array.isArray(recipe.ingredients)) {
+        recipe.ingredients = recipe.ingredients.map(ingredient => {
+          if (typeof ingredient === 'string') return ingredient;
+          if (ingredient && typeof ingredient === 'object' && 'item' in ingredient) {
+            return ingredient.amount ? `${ingredient.item} (${ingredient.amount})` : ingredient.item;
+          }
+          return 'Unknown ingredient';
+        });
+      }
+      // Validate recipe structure
+      if (!recipe.name || !Array.isArray(recipe.ingredients) || !Array.isArray(recipe.instructions)) {
+        throw new Error('Incomplete recipe data');
+      }
     } catch (err) {
       console.error('Invalid JSON from Gemini API:', recipeText);
       throw new Error('Invalid JSON format: ' + err.message);
     }
 
-    res.status(200).json({ recipe: recipeText });
+    res.status(200).json({ recipe: JSON.stringify(recipe) });
   } catch (err) {
     console.error('Gemini API Error:', err.message, err.stack);
     res.status(500).json({ error: `Failed to generate recipe: ${err.message}` });
