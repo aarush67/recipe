@@ -128,7 +128,7 @@
         setError(null);
         setRecipe(null);
 
-        const prompt = `Generate a detailed recipe in JSON format with fields: name, ingredients (array), instructions (array), nutritionalInfo (string). Use these ingredients: ${ingredients}. Dietary preference: ${dietary === 'none' ? 'No restrictions' : dietary}. Cuisine type: ${cuisine === 'none' ? 'Any' : cuisine}.`;
+        const prompt = `Generate a detailed recipe in JSON format with fields: name, ingredients (array), instructions (array), nutritionalInfo (string). Use these ingredients: ${ingredients}. Dietary preference: ${dietary === 'none' ? 'No restrictions' : dietary}. Cuisine type: ${cuisine === 'none' ? 'Any' : cuisine}. Return only the JSON object, without markdown or code block formatting.`;
 
         try {
           const response = await fetch('/api/gemini', {
@@ -145,7 +145,11 @@
           let newRecipe;
           try {
             newRecipe = JSON.parse(data.recipe);
+            if (!newRecipe.name || !Array.isArray(newRecipe.ingredients) || !Array.isArray(newRecipe.instructions)) {
+              throw new Error('Incomplete recipe data');
+            }
           } catch (err) {
+            console.error('Raw API response:', data.recipe);
             throw new Error('Invalid recipe format from API: ' + err.message);
           }
 
@@ -159,7 +163,7 @@
           setCookie('generationLimit', { count: newCount, date: new Date().toDateString() }, 1);
           setGenerationsLeft(3 - newCount);
         } catch (err) {
-          setError(`Failed to generate recipe: ${err.message}. Please check your API key or try again.`);
+          setError(`Failed to generate recipe: ${err.message}. Please try again or contact support.`);
           console.error('API Error:', err);
         } finally {
           setLoading(false);
@@ -194,7 +198,7 @@
                   <option value="vegan">Vegan</option>
                   <option value="vegetarian">Vegetarian</option>
                   <option value="gluten-free">Gluten-Free</option>
-                  <option value="keto"></option>
+                  <option value="keto">Keto</option>
                 </select>
               </div>
               <div>
