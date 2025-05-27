@@ -27,6 +27,18 @@
 </head>
 <body class="min-h-screen flex items-center justify-center p-6">
   <div id="root"></div>
+  <script type="text/javascript">
+    // Fallback if React fails to load
+    if (typeof React === 'undefined' || typeof ReactDOM === 'undefined' || typeof Babel === 'undefined') {
+      console.error('Failed to load React, ReactDOM, or Babel from CDN');
+      document.getElementById('root').innerHTML = `
+        <div class="text-center text-gray-800">
+          <h1 class="text-2xl font-bold">Failed to load app</h1>
+          <p>Please check your internet connection or refresh the page.</p>
+        </div>
+      `;
+    }
+  </script>
   <script type="text/babel">
     const { useState, useEffect } = React;
 
@@ -268,7 +280,18 @@
 
     try {
       const root = document.getElementById('root');
-      ReactDOM.render(<App />, root);
+      if (!root) {
+        console.error('Root element not found');
+        document.body.innerHTML = `
+          <div class="text-center text-gray-800">
+            <h1 class="text-2xl font-bold">Failed to load app</h1>
+            <p>Root element missing. Please refresh the page.</p>
+          </div>
+        `;
+      } else {
+        ReactDOM.render(<App />, root);
+        console.log('App rendered successfully');
+      }
     } catch (err) {
       console.error('Render Error:', err);
       document.getElementById('root').innerHTML = `
