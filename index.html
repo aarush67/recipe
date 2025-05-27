@@ -15,14 +15,13 @@
       100% { background-position: 0% 50%; }
     }
     body {
-      background: linear-gradient(270deg, #6B46C1, #EC4899, #3B82F6);
+      background: linear-gradient(270deg, #E6E6FA, #F0FFF4, #FFE5B4);
       background-size: 600% 600%;
-      animation: gradientShift 15s ease infinite;
+      animation: gradientShift 20s ease infinite;
     }
-    .glass-card {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+    .recipe-card {
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.1);
     }
   </style>
 </head>
@@ -41,9 +40,9 @@
         if (this.state.hasError) {
           console.error('Render Error:', this.state.error);
           return (
-            <div className="text-center text-white">
+            <div className="text-center text-gray-800">
               <h1 className="text-2xl font-bold">Something went wrong</h1>
-              <p>Please refresh the page or check the console for details.</p>
+              <p>Please refresh the page or check the console (F12) for details.</p>
             </div>
           );
         }
@@ -154,27 +153,27 @@
 
       return (
         <ErrorBoundary>
-          <div className="max-w-4xl w-full mx-auto glass-card rounded-2xl shadow-xl p-8">
-            <h1 className="text-4xl font-extrabold text-center text-white mb-6 drop-shadow">AI Recipe Generator</h1>
-            <p className="text-center text-white opacity-80 mb-6">Generations left today: {generationsLeft}</p>
+          <div className="max-w-4xl w-full mx-auto recipe-card rounded-2xl shadow-lg p-8">
+            <h1 className="text-4xl font-extrabold text-center text-gray-800 mb-6">AI Recipe Generator</h1>
+            <p className="text-center text-gray-600 mb-6">Generations left today: {generationsLeft}</p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <div className="glass-card p-4 rounded-lg">
-                <label className="block text-sm font-medium text-white mb-2">Ingredients</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ingredients</label>
                 <input
                   type="text"
                   value={ingredients}
                   onChange={(e) => setIngredients(e.target.value)}
                   placeholder="e.g., chicken, rice, broccoli"
-                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 placeholder-white/50"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 />
               </div>
-              <div className="glass-card p-4 rounded-lg">
-                <label className="block text-sm font-medium text-white mb-2">Dietary Preference</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Dietary Preference</label>
                 <select
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 >
                   <option value="none">No Preference</option>
                   <option value="vegan">Vegan</option>
@@ -183,12 +182,12 @@
                   <option value="keto">Keto</option>
                 </select>
               </div>
-              <div className="glass-card p-4 rounded-lg">
-                <label className="block text-sm font-medium text-white mb-2">Cuisine Type</label>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Cuisine Type</label>
                 <select
                   value={cuisine}
                   onChange={(e) => setCuisine(e.target.value)}
-                  className="w-full p-3 bg-white/10 text-white border border-white/20 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 >
                   <option value="none">Any Cuisine</option>
                   <option value="Italian">Italian</option>
@@ -202,7 +201,7 @@
             <button
               onClick={handleGenerateRecipe}
               disabled={loading || !ingredients.trim() || generationsLeft <= 0}
-              className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 transition-all duration-300"
+              className="w-full bg-blue-500 text-white py-3 rounded-lg hover:bg-blue-600 disabled:bg-gray-300 transition-all duration-300"
             >
               {loading ? (
                 <span className="flex items-center justify-center">
@@ -218,23 +217,23 @@
             </button>
 
             {error && (
-              <p className="text-red-300 text-center mt-4 bg-red-500/20 rounded-lg p-3">{error}</p>
+              <p className="text-red-600 text-center mt-4 bg-red-100 rounded-lg p-3">{error}</p>
             )}
 
             {recipe && (
-              <div className="mt-8 p-6 glass-card rounded-lg">
-                <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow">{recipe.name || 'Your Recipe'}</h2>
+              <div className="mt-8 p-6 recipe-card rounded-lg">
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">{recipe.name || 'Your Recipe'}</h2>
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-white">Ingredients</h3>
-                  <ul className="list-disc pl-5 text-white/80">
+                  <h3 className="text-lg font-medium text-gray-700">Ingredients</h3>
+                  <ul className="list-disc pl-5 text-gray-600">
                     {(recipe.ingredients || []).map((item, index) => (
                       <li key={index}>{item}</li>
                     ))}
                   </ul>
                 </div>
                 <div className="mb-4">
-                  <h3 className="text-lg font-medium text-white">Instructions</h3>
-                  <ol className="list-decimal pl-5 text-white/80">
+                  <h3 className="text-lg font-medium text-gray-700">Instructions</h3>
+                  <ol className="list-decimal pl-5 text-gray-600">
                     {(recipe.instructions || []).map((step, index) => (
                       <li key={index}>{step}</li>
                     ))}
@@ -242,8 +241,8 @@
                 </div>
                 {recipe.nutritionalInfo && (
                   <div>
-                    <h3 className="text-lg font-medium text-white">Nutritional Info</h3>
-                    <p className="text-white/80">{recipe.nutritionalInfo}</p>
+                    <h3 className="text-lg font-medium text-gray-700">Nutritional Info</h3>
+                    <p className="text-gray-600">{recipe.nutritionalInfo}</p>
                   </div>
                 )}
               </div>
@@ -251,12 +250,12 @@
 
             {recipeHistory.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-2xl font-semibold text-white mb-4 drop-shadow">Recipe History</h2>
+                <h2 className="text-2xl font-semibold text-gray-800 mb-4">Recipe History</h2>
                 <div className="grid gap-4">
                   {recipeHistory.map((savedRecipe, index) => (
-                    <div key={index} className="p-4 glass-card rounded-lg hover:shadow-lg transition-shadow">
-                      <h3 className="text-lg font-medium text-white">{savedRecipe.name}</h3>
-                      <p className="text-white/80">Ingredients: {savedRecipe.ingredients.join(', ')}</p>
+                    <div key={index} className="p-4 recipe-card rounded-lg hover:shadow-md transition-shadow">
+                      <h3 className="text-lg font-medium text-gray-700">{savedRecipe.name}</h3>
+                      <p className="text-gray-600">Ingredients: {savedRecipe.ingredients.join(', ')}</p>
                     </div>
                   ))}
                 </div>
@@ -273,7 +272,7 @@
     } catch (err) {
       console.error('Render Error:', err);
       document.getElementById('root').innerHTML = `
-        <div class="text-center text-white">
+        <div class="text-center text-gray-800">
           <h1 class="text-2xl font-bold">Failed to load app</h1>
           <p>Please check the console (F12) for details or refresh the page.</p>
         </div>
