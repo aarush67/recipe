@@ -1,8 +1,7 @@
 import { RateLimiter } from 'limiter';
 import NodeCache from 'node-cache';
 
-// Initialize cache and rate limiter
-const cache = new NodeCache({ stdTTL: 3600 }); // Cache for 1 hour
+const cache = new NodeCache({ stdTTL: 3600 });
 const limiter = new RateLimiter({ tokensPerInterval: 10, interval: 'minute' });
 
 export default async function handler(req, res) {
@@ -28,14 +27,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server configuration error: API key missing' });
   }
 
-  // Rate limiting
   const remainingRequests = await limiter.removeTokens(1);
   if (remainingRequests < 0) {
     console.error('Rate limit exceeded');
     return res.status(429).json({ error: 'Too many requests, please try again later' });
   }
 
-  // Check cache
   const cacheKey = `recipe_${prompt}`;
   const cachedResponse = cache.get(cacheKey);
   if (cachedResponse) {
