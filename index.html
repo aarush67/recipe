@@ -9,6 +9,8 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.21/lodash.min.js"></script>
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4778277727361005" crossorigin="anonymous"></script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-NTPJEGNSWS"></script>
   <script>
@@ -44,6 +46,15 @@
       background: rgba(45, 55, 72, 0.95);
       color: #E5E7EB;
     }
+    .skeleton {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+    }
+    @keyframes skeleton-loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-4">
@@ -59,29 +70,13 @@
       `;
     }
   </script>
-  <script type="text/babel" data-presets="react,typescript">
-    import { useState, useEffect, useCallback, useMemo } from 'react';
-    import { debounce } from 'lodash';
-
-    // Types
-    interface Recipe {
-      name: string;
-      ingredients: string[];
-      instructions: string[];
-      nutritionalInfo?: string;
-    }
-
-    interface GenerationLimit {
-      count: number;
-      date: string;
-    }
-
-    // Utility functions (moved to separate file in production)
-    const sanitizeInput = (input: string): string => {
-      return input.replace(/[<>"'&]/g, '');
+  <script type="text/javascript">
+    // Utility functions
+    const sanitizeInput = (input) => {
+      return DOMPurify.sanitize(input, { USE_PROFILES: { html: false } });
     };
 
-    const setCookie = (name: string, value: any, days: number): void => {
+    const setCookie = (name, value, days) => {
       try {
         const expires = new Date();
         expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
@@ -91,11 +86,14 @@
       }
     };
 
-    const getCookie = (name: string): any => {
+    const getCookie = (name) => {
       try {
         const value = `; ${document.cookie}`;
         const parts = value.split(`; ${name}=`);
-        if (parts.length === 2) return JSON.parse(decodeURIComponent(parts.pop()!.split(';').shift()!));
+        if (parts.length === 2) {
+          const cookieValue = parts.pop().split(';').shift();
+          return JSON.parse(decodeURIComponent(cookieValue));
+        }
         return null;
       } catch (err) {
         console.error('Error getting cookie:', err);
@@ -103,10 +101,10 @@
       }
     };
 
-    const setRecipesCookie = (recipes: Recipe[], days: number): void => {
+    const setRecipesCookie = (recipes, days) => {
       try {
         const maxRecipesPerCookie = 3;
-        const chunks: Recipe[][] = [];
+        const chunks = [];
         for (let i = 0; i < recipes.length; i += maxRecipesPerCookie) {
           chunks.push(recipes.slice(i, i + maxRecipesPerCookie));
         }
@@ -121,9 +119,9 @@
       }
     };
 
-    const getRecipesCookie = (): Recipe[] => {
+    const getRecipesCookie = () => {
       try {
-        const recipes: Recipe[] = [];
+        const recipes = [];
         for (let i = 0; i < 4; i++) {
           const chunk = getCookie(`recipes_${i}`);
           if (chunk && Array.isArray(chunk)) {
@@ -137,7 +135,7 @@
       }
     };
 
-    const normalizeIngredient = (ingredient: any): string => {
+    const normalizeIngredient = (ingredient) => {
       if (typeof ingredient === 'string') return ingredient;
       if (ingredient && typeof ingredient === 'object' && 'item' in ingredient) {
         return ingredient.amount ? `${ingredient.item} (${ingredient.amount})` : ingredient.item;
@@ -145,14 +143,30 @@
       console.warn('Invalid ingredient format:', ingredient);
       return 'Unknown ingredient';
     };
+  </script>
+  <script type="text/babel" data-presets="react,typescript">
+    const { useState, useEffect, useCallback, useMemo, useRef } = React;
 
-    // Components
-    const ErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Types
+    const Recipe = {
+      name: '',
+      ingredients: [],
+      instructions: [],
+      nutritionalInfo: ''
+    };
+
+    const GenerationLimit = {
+      count: 0,
+      date: ''
+    };
+
+    // Error Boundary
+    const ErrorBoundary = ({ children }) => {
       const [hasError, setHasError] = useState(false);
-      const [error, setError] = useState<Error | null>(null);
+      const [error, setError] = useState(null);
 
       useEffect(() => {
-        const errorHandler = (error: ErrorEvent) => {
+        const errorHandler = (error) => {
           setHasError(true);
           setError(error.error);
         };
@@ -169,21 +183,12 @@
           </div>
         );
       }
-      return <>{children}</>;
+      return children;
     };
 
-    const RecipeForm: React.FC<{
-      ingredients: string;
-      setIngredients: (value: string) => void;
-      dietary: string;
-      setDietary: (value: string) => void;
-      cuisine: string;
-      setCuisine: (value: string) => void;
-      onGenerate: () => void;
-      loading: boolean;
-      generationsLeft: number;
-    }> = ({ ingredients, setIngredients, dietary, setDietary, cuisine, setCuisine, onGenerate, loading, generationsLeft }) => {
-      const debouncedSetIngredients = useMemo(() => debounce((value: string) => setIngredients(sanitizeInput(value)), 300), []);
+    // Recipe Form Component
+    const RecipeForm = ({ ingredients, setIngredients, dietary, setDietary, cuisine, setCuisine, onGenerate, loading, generationsLeft }) => {
+      const debouncedSetIngredients = useMemo(() => _.debounce((value) => setIngredients(sanitizeInput(value)), 300), []);
 
       return (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -210,6 +215,7 @@
               value={dietary}
               onChange={(e) => setDietary(e.target.value)}
               className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-gray-700 dark:text-gray-200"
+              aria-label="Dietary Preference"
             >
               <option value="none">No Preference</option>
               <option value="vegan">Vegan</option>
@@ -227,6 +233,7 @@
               value={cuisine}
               onChange={(e) => setCuisine(e.target.value)}
               className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white dark:bg-gray-700 dark:text-gray-200"
+              aria-label="Cuisine Type"
             >
               <option value="none">Any Cuisine</option>
               <option value="Italian">Italian</option>
@@ -257,7 +264,8 @@
       );
     };
 
-    const RecipeDisplay: React.FC<{ recipe: Recipe | null }> = ({ recipe }) => {
+    // Recipe Display Component
+    const RecipeDisplay = ({ recipe }) => {
       if (!recipe) return null;
 
       const handleSavePDF = () => {
@@ -325,24 +333,45 @@
       );
     };
 
-    const RecipeHistory: React.FC<{
-      recipeHistory: Recipe[];
-      expandedRecipeIndex: number | null;
-      toggleRecipe: (index: number) => void;
-      clearHistory: () => void;
-      searchQuery: string;
-      setSearchQuery: (value: string) => void;
-    }> = ({ recipeHistory, expandedRecipeIndex, toggleRecipe, clearHistory, searchQuery, setSearchQuery }) => {
+    // Recipe History Component
+    const RecipeHistory = ({ recipeHistory, expandedRecipeIndex, toggleRecipe, clearHistory, searchQuery, setSearchQuery }) => {
+      const historyRef = useRef(null);
+      const [isVisible, setIsVisible] = useState(false);
+
+      useEffect(() => {
+        const observer = new IntersectionObserver(
+          ([entry]) => {
+            if (entry.isIntersecting) {
+              setIsVisible(true);
+              observer.disconnect();
+            }
+          },
+          { threshold: 0.1 }
+        );
+        if (historyRef.current) observer.observe(historyRef.current);
+        return () => observer.disconnect();
+      }, []);
+
       const filteredRecipes = useMemo(
-        () =>
-          recipeHistory.filter((recipe) =>
-            recipe.name.toLowerCase().includes(searchQuery.toLowerCase())
-          ),
+        () => recipeHistory.filter((recipe) => recipe.name.toLowerCase().includes(searchQuery.toLowerCase())),
         [recipeHistory, searchQuery]
       );
 
+      if (!isVisible) {
+        return (
+          <div ref={historyRef} className="mt-8">
+            <div className="skeleton h-8 w-1/2 mb-4"></div>
+            <div className="grid gap-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="skeleton h-24 rounded-lg"></div>
+              ))}
+            </div>
+          </div>
+        );
+      }
+
       return (
-        <div className="mt-8">
+        <div ref={historyRef} className="mt-8">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200">Recipe History</h2>
             <div>
@@ -423,25 +452,26 @@
       );
     };
 
-    const App: React.FC = () => {
-      const [ingredients, setIngredients] = useState<string>('');
-      const [dietary, setDietary] = useState<string>('none');
-      const [cuisine, setCuisine] = useState<string>('none');
-      const [recipe, setRecipe] = useState<Recipe | null>(null);
-      const [loading, setLoading] = useState<boolean>(false);
-      const [error, setError] = useState<string | null>(null);
-      const [recipeHistory, setRecipeHistory] = useState<Recipe[]>([]);
-      const [generationsLeft, setGenerationsLeft] = useState<number>(3);
-      const [expandedRecipeIndex, setExpandedRecipeIndex] = useState<number | null>(null);
-      const [searchQuery, setSearchQuery] = useState<string>('');
-      const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+    // Main App Component
+    const App = () => {
+      const [ingredients, setIngredients] = useState('');
+      const [dietary, setDietary] = useState('none');
+      const [cuisine, setCuisine] = useState('none');
+      const [recipe, setRecipe] = useState(null);
+      const [loading, setLoading] = useState(false);
+      const [error, setError] = useState(null);
+      const [recipeHistory, setRecipeHistory] = useState([]);
+      const [generationsLeft, setGenerationsLeft] = useState(3);
+      const [expandedRecipeIndex, setExpandedRecipeIndex] = useState(null);
+      const [searchQuery, setSearchQuery] = useState('');
+      const [isDarkMode, setIsDarkMode] = useState(false);
 
       useEffect(() => {
         try {
           const savedRecipes = getRecipesCookie();
           setRecipeHistory(savedRecipes);
 
-          const limitData: GenerationLimit = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
+          const limitData = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
           const today = new Date().toDateString();
           if (limitData.date !== today) {
             setCookie('generationLimit', { count: 0, date: today }, 1);
@@ -494,7 +524,7 @@
             throw new Error(`API error: ${response.statusText} - ${errorText}`);
           }
           const data = await response.json();
-          let newRecipe: Recipe;
+          let newRecipe;
           try {
             newRecipe = JSON.parse(data.recipe);
             if (!newRecipe.name || !Array.isArray(newRecipe.ingredients) || !Array.isArray(newRecipe.instructions)) {
@@ -511,11 +541,11 @@
           setRecipeHistory(updatedHistory);
           setRecipe(newRecipe);
 
-          const limitData: GenerationLimit = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
+          const limitData = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
           const newCount = limitData.count + 1;
           setCookie('generationLimit', { count: newCount, date: new Date().toDateString() }, 1);
           setGenerationsLeft(3 - newCount);
-        } catch (err: any) {
+        } catch (err) {
           setError(`Failed to generate recipe: ${err.message}. Please try again or contact support.`);
           console.error('API Error:', err);
         } finally {
@@ -567,7 +597,23 @@
             {error && (
               <p className="text-red-600 text-center mt-4 bg-red-100 rounded-lg p-3">{error}</p>
             )}
-            <RecipeDisplay recipe={recipe} />
+            {loading && !recipe ? (
+              <div className="mt-8 p-6 recipe-card rounded-lg">
+                <div className="skeleton h-8 w-3/4 mb-4"></div>
+                <div className="mb-4">
+                  <div className="skeleton h-6 w-1/4 mb-2"></div>
+                  <div className="skeleton h-4 w-full mb-1"></div>
+                  <div className="skeleton h-4 w-3/4"></div>
+                </div>
+                <div className="mb-4">
+                  <div className="skeleton h-6 w-1/4 mb-2"></div>
+                  <div className="skeleton h-4 w-full mb-1"></div>
+                  <div className="skeleton h-4 w-2/3"></div>
+                </div>
+              </div>
+            ) : (
+              <RecipeDisplay recipe={recipe} />
+            )}
             {recipeHistory.length > 0 && (
               <RecipeHistory
                 recipeHistory={recipeHistory}
@@ -599,7 +645,7 @@
       }
     } catch (err) {
       console.error('Render Error:', err);
-      document.getElementById('root')!.innerHTML = `
+      document.getElementById('root').innerHTML = `
         <div class="text-center text-gray-800 dark:text-gray-200">
           <h1 class="text-2xl font-bold">Failed to load app</h1>
           <p>Please check the console (F12) for details or refresh the page.</p>
