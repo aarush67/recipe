@@ -13,17 +13,11 @@
   "routes": [
     {
       "src": "/api/gemini",
-      "dest": "/api/gemini.js",
-      "headers": {
-        "Cache-Control": "public, max-age=3600, s-maxage=3600"
-      }
+      "dest": "/api/gemini.js"
     },
     {
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "env": {
-    "NODE_ENV": "production"
-  }
+  ]
 }
