@@ -53,7 +53,7 @@
           console.error('Render Error:', this.state.error);
           return (
             <div className="text-center text-gray-800">
-              <h1 className="text-2xl font-bold">Something went wrong</h1>
+              <h1 class="text-2xl font-bold">Something went wrong</h1>
               <p>Please refresh the page or check the console (F12) for details.</p>
             </div>
           );
@@ -85,6 +85,44 @@
       }
     };
 
+    // Save recipes across multiple cookies
+    const setRecipesCookie = (recipes, days) => {
+      try {
+        const maxRecipesPerCookie = 3; // Limit to 3 recipes per cookie to stay under 4KB
+        const chunks = [];
+        for (let i = 0; i < recipes.length; i += maxRecipesPerCookie) {
+          chunks.push(recipes.slice(i, i + maxRecipesPerCookie));
+        }
+        // Clear old recipe cookies
+        for (let i = 0; i < 4; i++) {
+          setCookie(`recipes_${i}`, '', -1); // Expire old cookies
+        }
+        // Set new cookies
+        chunks.forEach((chunk, index) => {
+          setCookie(`recipes_${index}`, chunk, days);
+        });
+      } catch (err) {
+        console.error('Error setting recipes cookie:', err);
+      }
+    };
+
+    // Retrieve recipes from multiple cookies
+    const getRecipesCookie = () => {
+      try {
+        const recipes = [];
+        for (let i = 0; i < 4; i++) { // Check up to 4 cookies (12 recipes max)
+          const chunk = getCookie(`recipes_${i}`);
+          if (chunk && Array.isArray(chunk)) {
+            recipes.push(...chunk);
+          }
+        }
+        return recipes.slice(0, 10); // Limit to 10 recipes
+      } catch (err) {
+        console.error('Error getting recipes cookie:', err);
+        return [];
+      }
+    };
+
     // Normalize ingredient format
     const normalizeIngredient = (ingredient) => {
       if (typeof ingredient === 'string') return ingredient;
@@ -108,7 +146,7 @@
 
       useEffect(() => {
         try {
-          const savedRecipes = getCookie('recipes') || [];
+          const savedRecipes = getRecipesCookie();
           setRecipeHistory(savedRecipes);
 
           const limitData = getCookie('generationLimit') || { count: 0, date: new Date().toDateString() };
@@ -166,7 +204,7 @@
           }
 
           const updatedHistory = [newRecipe, ...recipeHistory].slice(0, 10);
-          setCookie('recipes', updatedHistory, 7);
+          setRecipesCookie(updatedHistory, 7);
           setRecipeHistory(updatedHistory);
           setRecipe(newRecipe);
 
@@ -208,7 +246,7 @@
                 <select
                   value={dietary}
                   onChange={(e) => setDietary(e.target.value)}
-                  className="w-full p-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 >
                   <option value="none">No Preference</option>
                   <option value="vegan">Vegan</option>
@@ -222,7 +260,7 @@
                 <select
                   value={cuisine}
                   onChange={(e) => setCuisine(e.target.value)}
-                  className="w-full p-12 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                  className="w-full p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 >
                   <option value="none">Any Cuisine</option>
                   <option value="Italian">Italian</option>
